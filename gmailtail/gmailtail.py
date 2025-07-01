@@ -59,7 +59,7 @@ class GmailTail:
                 # Run monitoring
                 if self.config.monitoring.once:
                     self._run_once(query)
-                elif self.config.monitoring.follow:
+                elif self.config.monitoring.tail:
                     self._run_follow(query)
                 else:
                     self._run_once(query)

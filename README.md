@@ -154,10 +154,10 @@ gmailtail --from "notifications@github.com" --format json-lines --follow | jq -r
 gmailtail --since "$(date -d 'today' '+%Y-%m-%dT00:00:00Z')" --format json-lines --once | jq -r '[group_by(.from.email) | .[] | {sender: .[0].from.email, count: length}] | sort_by(.count) | reverse'
 
 # Monitor for emails with specific keywords in body and alert
-gmailtail --include-body --format json-lines --follow | jq -r 'select(.body | test("error|fail|alert"; "i")) | "ALERT: \(.from.email) - \(.subject)"'
+gmailtail --include-body --format json-lines --tail | jq -r 'select(.body | test("error|fail|alert"; "i")) | "ALERT: \(.from.email) - \(.subject)"'
 
 # Extract and format meeting invitations
-gmailtail --query "has:attachment filename:ics" --include-attachments --format json-lines --follow | jq '{meeting: .subject, organizer: .from.email, time: .timestamp, location: (.body | capture("Location:.*(?<loc>.*)")? | .loc // "N/A")}'
+gmailtail --query "has:attachment filename:ics" --include-attachments --format json-lines --tail | jq '{meeting: .subject, organizer: .from.email, time: .timestamp, location: (.body | capture("Location:.*(?<loc>.*)")? | .loc // "N/A")}'
 ```
 
 ## Command Line Options

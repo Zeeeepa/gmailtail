@@ -41,7 +41,7 @@ output:
 monitoring:
   poll_interval: 60        # seconds between polls
   batch_size: 20          # messages per batch
-  follow: true            # continuous monitoring
+  tail: true              # continuous monitoring
   # max_messages: 1000    # stop after processing this many messages
 
 # Checkpoint settings

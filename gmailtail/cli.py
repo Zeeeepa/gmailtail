@@ -63,7 +63,7 @@ from .gmailtail import GmailTail
               help='Polling interval in seconds')
 @click.option('--batch-size', type=int, default=10,
               help='Number of emails to fetch per batch')
-@click.option('--follow', '-f', is_flag=True, help='Continuous monitoring mode (like tail -f)')
+@click.option('--tail', '-t', is_flag=True, help='Continuous monitoring mode (like tail -f)')
 @click.option('--once', is_flag=True, help='Run once, do not continue monitoring')
 @click.option('--max-messages', type=int, help='Maximum number of messages to process')
 
@@ -81,16 +81,16 @@ def main(**kwargs):
     Examples:
     
         # Monitor all new emails
-        gmailtail --follow
+        gmailtail --tail
         
         # Monitor emails from specific sender
-        gmailtail --from "noreply@github.com" --follow
+        gmailtail --from "noreply@github.com" --tail
         
         # Monitor with query and include body
-        gmailtail --query "subject:alert OR subject:error" --include-body --follow
+        gmailtail --query "subject:alert OR subject:error" --include-body --tail
         
         # Resume from checkpoint
-        gmailtail --resume --follow
+        gmailtail --resume --tail
     """
     try:
         # Load configuration

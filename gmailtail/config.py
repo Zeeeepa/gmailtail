@@ -56,7 +56,7 @@ class MonitoringConfig:
     """Monitoring behavior configuration"""
     poll_interval: int = 30
     batch_size: int = 10
-    follow: bool = False
+    tail: bool = False
     once: bool = False
     max_messages: Optional[int] = None
 
@@ -124,7 +124,7 @@ class Config:
             config.monitoring = MonitoringConfig(
                 poll_interval=monitoring_data.get('poll_interval', 30),
                 batch_size=monitoring_data.get('batch_size', 10),
-                follow=monitoring_data.get('follow', False),
+                tail=monitoring_data.get('tail', False),
                 once=monitoring_data.get('once', False),
                 max_messages=monitoring_data.get('max_messages')
             )
@@ -211,8 +211,8 @@ class Config:
             config.monitoring.poll_interval = kwargs['poll_interval']
         if kwargs.get('batch_size'):
             config.monitoring.batch_size = kwargs['batch_size']
-        if kwargs.get('follow'):
-            config.monitoring.follow = kwargs['follow']
+        if kwargs.get('tail'):
+            config.monitoring.tail = kwargs['tail']
         if kwargs.get('once'):
             config.monitoring.once = kwargs['once']
         if kwargs.get('max_messages'):
