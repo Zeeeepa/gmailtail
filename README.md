@@ -123,6 +123,43 @@ cp gmailtail.yaml.example gmailtail.yaml
 gmailtail --config-file gmailtail.yaml
 ```
 
+### Advanced usage with jq
+
+```bash
+# Extract only sender email and subject
+gmailtail --format json-lines --follow | jq -r '.from.email + ": " + .subject'
+
+# Filter emails by specific sender and get only timestamps
+gmailtail --format json-lines --follow | jq -r 'select(.from.email == "noreply@github.com") | .timestamp'
+
+# Count emails by sender
+gmailtail --format json-lines --once | jq -r '.from.email' | sort | uniq -c | sort -nr
+
+# Get all unique labels across emails
+gmailtail --format json-lines --once | jq -r '.labels[]?' | sort | uniq
+
+# Extract emails with attachments and show attachment info
+gmailtail --format json-lines --include-attachments --follow | jq 'select(.attachments | length > 0) | {subject, from: .from.email, attachments: [.attachments[].filename]}'
+
+# Monitor for urgent emails and send desktop notifications (macOS)
+gmailtail --query "label:urgent OR subject:urgent" --format json-lines --follow | jq -r '.subject' | while read subject; do osascript -e "display notification \"$subject\" with title \"Urgent Email\""; done
+
+# Extract email body text and save to files
+gmailtail --include-body --format json-lines --once | jq -r '"\(.id).txt|\(.body // .snippet)"' | while IFS='|' read filename content; do echo "$content" > "$filename"; done
+
+# Monitor GitHub notifications and extract PR/issue numbers
+gmailtail --from "notifications@github.com" --format json-lines --follow | jq -r 'select(.subject | test("Pull Request|Issue")) | .subject | capture(".*#(?<number>[0-9]+).*") | .number'
+
+# Create a summary of daily email activity
+gmailtail --since "$(date -d 'today' '+%Y-%m-%dT00:00:00Z')" --format json-lines --once | jq -r '[group_by(.from.email) | .[] | {sender: .[0].from.email, count: length}] | sort_by(.count) | reverse'
+
+# Monitor for emails with specific keywords in body and alert
+gmailtail --include-body --format json-lines --follow | jq -r 'select(.body | test("error|fail|alert"; "i")) | "ALERT: \(.from.email) - \(.subject)"'
+
+# Extract and format meeting invitations
+gmailtail --query "has:attachment filename:ics" --include-attachments --format json-lines --follow | jq '{meeting: .subject, organizer: .from.email, time: .timestamp, location: (.body | capture("Location:.*(?<loc>.*)")? | .loc // "N/A")}'
+```
+
 ## Command Line Options
 
 ### Authentication
