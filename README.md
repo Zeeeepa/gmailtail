@@ -127,8 +127,8 @@ gmailtail --config-file gmailtail.yaml
 
 ### Authentication
 - `--credentials PATH` - OAuth2 credentials file path
-- `--service-account PATH` - Service account key file path
-- `--token-cache PATH` - Token cache directory (default: `~/.gmailtail/tokens`)
+- `--auth-token PATH` - Service account authentication token file path
+- `--cached-auth-token PATH` - Cached authentication token file path (default: `~/.gmailtail/tokens`)
 
 ### Filtering
 - `--query QUERY` - Gmail search query syntax
@@ -162,10 +162,11 @@ gmailtail --config-file gmailtail.yaml
 - `--reset-checkpoint` - Reset checkpoint
 
 ### Other
-- `--verbose, -v` - Verbose output
-- `--quiet, -q` - Quiet mode (only JSON output)
+- `--verbose, -v` - Verbose output mode
+- `--quiet` - Quiet mode, only output email JSON
+- `--log-file PATH` - Log file path
 - `--config-file PATH` - Configuration file path
-- `--dry-run` - Simulate without processing
+- `--dry-run` - Simulate run without actual processing
 
 ## Output Format
 
@@ -213,28 +214,49 @@ gmailtail --config-file gmailtail.yaml
 Create a `gmailtail.yaml` file for complex configurations:
 
 ```yaml
+# Authentication settings
 auth:
   credentials_file: ~/.config/gmailtail/credentials.json
-  token_cache: ~/.config/gmailtail/tokens
+  # auth_token: ~/.config/gmailtail/service-account.json
+  cached_auth_token: ~/.config/gmailtail/tokens
 
+# Email filtering settings
 filters:
   query: "label:important"
+  # from: "noreply@github.com"
+  # to: "me@example.com"
+  # subject: "alert|error|warning"
+  # labels: ["important", "inbox"]
+  # has_attachment: true
   unread_only: true
+  # since: "2025-01-01T00:00:00Z"
 
+# Output formatting
 output:
   format: json-lines
   include_body: true
+  include_attachments: true
   max_body_length: 500
+  pretty: false
+  # fields: ["id", "subject", "from", "timestamp", "labels"]
 
+# Monitoring behavior
 monitoring:
   poll_interval: 60
   batch_size: 20
   follow: true
+  # max_messages: 1000
 
+# Checkpoint settings
 checkpoint:
   checkpoint_file: ~/.config/gmailtail/checkpoint
   checkpoint_interval: 120
   resume: true
+
+# Logging
+verbose: false
+quiet: false
+# log_file: ~/.config/gmailtail/gmailtail.log
 ```
 
 ## Authentication Setup
