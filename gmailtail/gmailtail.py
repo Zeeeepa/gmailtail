@@ -31,7 +31,8 @@ class GmailTail:
     def _signal_handler(self, signum, frame):
         """Handle shutdown signals"""
         self.formatter.output_info("Shutting down...")
-        self.running = False
+        # TODO: safe exit 
+        sys.exit(0)
     
     def run(self):
         """Main run loop"""
@@ -185,6 +186,7 @@ class GmailTail:
                     processed_count += 1
                     
                 except KeyboardInterrupt:
+                    self.running = False
                     break
                 except Exception as e:
                     self.formatter.output_error(f"Error in follow loop: {e}")
