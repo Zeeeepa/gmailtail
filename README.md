@@ -4,7 +4,7 @@ A command-line tool to monitor Gmail messages and output them as JSON, designed 
 
 ## Features
 
-- 🔄 **Real-time monitoring** - Continuous monitoring of new emails with `--follow` mode
+- 🔄 **Real-time monitoring** - Continuous monitoring of new emails with `--tail` mode
 - 📧 **Flexible filtering** - Filter by sender, subject, labels, attachments, and more
 - 💾 **Checkpoint support** - Resume monitoring from where you left off
 - 🎯 **Multiple output formats** - JSON, JSON Lines, and compact formats
@@ -34,7 +34,7 @@ A command-line tool to monitor Gmail messages and output them as JSON, designed 
 
 3. **Run gmailtail:**
    ```bash
-   uv run gmailtail --credentials credentials.json --follow
+   uv run gmailtail --credentials credentials.json --tail
    ```
 
 ## Installation
@@ -58,58 +58,58 @@ uv pip install -e .
 ### Basic monitoring
 ```bash
 # Monitor all new emails
-gmailtail --follow
+gmailtail --tail
 
 # Monitor emails from specific sender
-gmailtail --from "noreply@github.com" --follow
+gmailtail --from "noreply@github.com" --tail
 
 # Monitor with Gmail search query
-gmailtail --query "subject:alert OR subject:error" --follow
+gmailtail --query "subject:alert OR subject:error" --tail
 ```
 
 ### Filtering options
 ```bash
 # Monitor unread emails only
-gmailtail --unread-only --follow
+gmailtail --unread-only --tail
 
 # Monitor emails with attachments
-gmailtail --has-attachment --include-attachments --follow
+gmailtail --has-attachment --include-attachments --tail
 
 # Monitor specific labels
-gmailtail --label important --label work --follow
+gmailtail --label important --label work --tail
 
 # Monitor since specific date
-gmailtail --since "2025-01-01T00:00:00Z" --follow
+gmailtail --since "2025-01-01T00:00:00Z" --tail
 ```
 
 ### Output formats
 ```bash
 # Pretty JSON output
-gmailtail --format json --pretty --follow
+gmailtail --format json --pretty --tail
 
 # JSON Lines format (one JSON per line)
-gmailtail --format json-lines --follow
+gmailtail --format json-lines --tail
 
 # Compact format
-gmailtail --format compact --follow
+gmailtail --format compact --tail
 
 # Include email body
-gmailtail --include-body --max-body-length 500 --follow
+gmailtail --include-body --max-body-length 500 --tail
 
 # Custom fields only
-gmailtail --fields "id,subject,from,timestamp" --follow
+gmailtail --fields "id,subject,from,timestamp" --tail
 ```
 
 ### Checkpoint management
 ```bash
 # Resume from last checkpoint
-gmailtail --resume --follow
+gmailtail --resume --tail
 
 # Reset checkpoint and start fresh
-gmailtail --reset-checkpoint --follow
+gmailtail --reset-checkpoint --tail
 
 # Custom checkpoint file
-gmailtail --checkpoint-file ./my-checkpoint --follow
+gmailtail --checkpoint-file ./my-checkpoint --tail
 ```
 
 ### Configuration file
@@ -127,10 +127,10 @@ gmailtail --config-file gmailtail.yaml
 
 ```bash
 # Extract only sender email and subject
-gmailtail --format json-lines --follow | jq -r '.from.email + ": " + .subject'
+gmailtail --format json-lines --tail | jq -r '.from.email + ": " + .subject'
 
 # Filter emails by specific sender and get only timestamps
-gmailtail --format json-lines --follow | jq -r 'select(.from.email == "noreply@github.com") | .timestamp'
+gmailtail --format json-lines --tail | jq -r 'select(.from.email == "noreply@github.com") | .timestamp'
 
 # Count emails by sender
 gmailtail --format json-lines --once | jq -r '.from.email' | sort | uniq -c | sort -nr
@@ -139,16 +139,16 @@ gmailtail --format json-lines --once | jq -r '.from.email' | sort | uniq -c | so
 gmailtail --format json-lines --once | jq -r '.labels[]?' | sort | uniq
 
 # Extract emails with attachments and show attachment info
-gmailtail --format json-lines --include-attachments --follow | jq 'select(.attachments | length > 0) | {subject, from: .from.email, attachments: [.attachments[].filename]}'
+gmailtail --format json-lines --include-attachments --tail | jq 'select(.attachments | length > 0) | {subject, from: .from.email, attachments: [.attachments[].filename]}'
 
 # Monitor for urgent emails and send desktop notifications (macOS)
-gmailtail --query "label:urgent OR subject:urgent" --format json-lines --follow | jq -r '.subject' | while read subject; do osascript -e "display notification \"$subject\" with title \"Urgent Email\""; done
+gmailtail --query "label:urgent OR subject:urgent" --format json-lines --tail | jq -r '.subject' | while read subject; do osascript -e "display notification \"$subject\" with title \"Urgent Email\""; done
 
 # Extract email body text and save to files
 gmailtail --include-body --format json-lines --once | jq -r '"\(.id).txt|\(.body // .snippet)"' | while IFS='|' read filename content; do echo "$content" > "$filename"; done
 
 # Monitor GitHub notifications and extract PR/issue numbers
-gmailtail --from "notifications@github.com" --format json-lines --follow | jq -r 'select(.subject | test("Pull Request|Issue")) | .subject | capture(".*#(?<number>[0-9]+).*") | .number'
+gmailtail --from "notifications@github.com" --format json-lines --tail | jq -r 'select(.subject | test("Pull Request|Issue")) | .subject | capture(".*#(?<number>[0-9]+).*") | .number'
 
 # Create a summary of daily email activity
 gmailtail --since "$(date -d 'today' '+%Y-%m-%dT00:00:00Z')" --format json-lines --once | jq -r '[group_by(.from.email) | .[] | {sender: .[0].from.email, count: length}] | sort_by(.count) | reverse'
@@ -186,7 +186,7 @@ gmailtail --query "has:attachment filename:ics" --include-attachments --format j
 - `--pretty` - Pretty-print JSON output
 
 ### Monitoring
-- `--follow, -f` - Continuous monitoring (like `tail -f`)
+- `--tail, -f` - Continuous monitoring (like `tail -f`)
 - `--once` - Run once and exit
 - `--poll-interval N` - Polling interval in seconds (default: 30)
 - `--batch-size N` - Messages per batch (default: 10)
@@ -281,7 +281,7 @@ output:
 monitoring:
   poll_interval: 60
   batch_size: 20
-  follow: true
+  tail: true
   # max_messages: 1000
 
 # Checkpoint settings
