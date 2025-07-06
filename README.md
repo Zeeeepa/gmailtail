@@ -11,6 +11,7 @@ A command-line tool to monitor Gmail messages and output them as JSON, designed 
 - ⚙️ **Configuration files** - YAML configuration for complex setups
 - 🔍 **Gmail search syntax** - Full support for Gmail's powerful search queries
 - 🚀 **Easy authentication** - Support for OAuth2 and service accounts
+- 💬 **Interactive REPL mode** - Interactive shell for exploring and querying emails
 
 ## Quick Start
 
@@ -34,7 +35,11 @@ A command-line tool to monitor Gmail messages and output them as JSON, designed 
 
 3. **Run gmailtail:**
    ```bash
+   # Start in tail mode (continuous monitoring)
    uv run gmailtail --credentials credentials.json --tail
+   
+   # Or start in interactive REPL mode
+   uv run gmailtail --credentials credentials.json --repl
    ```
 
 ## Installation
@@ -160,6 +165,116 @@ gmailtail --include-body --format json-lines --tail | jq -r 'select(.body | test
 gmailtail --query "has:attachment filename:ics" --include-attachments --format json-lines --tail | jq '{meeting: .subject, organizer: .from.email, time: .timestamp, location: (.body | capture("Location:.*(?<loc>.*)")? | .loc // "N/A")}'
 ```
 
+## Interactive REPL Mode
+
+The REPL (Read-Eval-Print Loop) mode provides an interactive shell for exploring and querying your Gmail account. This is perfect for ad-hoc email searches, debugging filters, and exploring your email data.
+
+### Starting REPL Mode
+
+```bash
+# Start REPL with OAuth2 credentials
+gmailtail --credentials credentials.json --repl
+
+# Start REPL with configuration file
+gmailtail --config-file gmailtail.yaml --repl
+```
+
+### REPL Commands
+
+Once in REPL mode, you can use these commands:
+
+#### Basic Email Operations
+```
+# Show unread emails from INBOX
+gmailtail> unread
+
+# Show 5 unread emails from a specific label
+gmailtail> unread important 5
+
+# Show recent emails from INBOX
+gmailtail> tail
+
+# Show 10 recent emails from a specific label
+gmailtail> tail work 10
+
+# Execute a Gmail search query
+gmailtail> query from:noreply@github.com subject:pull
+```
+
+#### Account Information
+```
+# Show your Gmail profile info
+gmailtail> profile
+
+# List all available labels
+gmailtail> labels
+
+# Show current configuration
+gmailtail> config
+```
+
+#### Navigation
+```
+# Show help for all commands
+gmailtail> help
+
+# Exit REPL
+gmailtail> exit
+# or
+gmailtail> quit
+# or press Ctrl+D
+```
+
+### REPL Examples
+
+```bash
+$ gmailtail --credentials credentials.json --repl
+
+Welcome to gmailtail REPL mode. Type 'help' for commands.
+
+gmailtail> unread important 3
+
+=== Found 3 unread emails in important ===
+
+ 1. [2025-01-15 10:30:25] GitHub <noreply@github.com>     | New pull request assigned to you
+ 2. [2025-01-15 09:45:12] JIRA <noreply@jira.com>        | Issue updated: Bug in login system
+ 3. [2025-01-15 08:20:30] Slack <noreply@slack.com>      | You have 5 new mentions
+
+gmailtail> query subject:alert OR subject:error
+
+=== Found 2 messages ===
+
+ 1. [2025-01-15 11:15:00] Monitor <alerts@monitor.com>    | Database connection alert
+ 2. [2025-01-15 10:00:00] System <system@server.com>     | Error in backup process
+
+gmailtail> profile
+Email: john.doe@example.com
+Messages Total: 15247
+Threads Total: 8932
+History ID: 1234567890
+
+gmailtail> labels
+Available labels:
+  INBOX (INBOX)
+  SENT (SENT)
+  DRAFT (DRAFT)
+  important (Label_1)
+  work (Label_2)
+  personal (Label_3)
+  
+gmailtail> exit
+Goodbye!
+```
+
+### REPL Output Format
+
+The REPL uses a human-readable compact format that shows:
+- **Timestamp**: When the email was received
+- **Sender**: Name (if available) or email address
+- **Subject**: Email subject (truncated if too long)
+
+This format is optimized for quick scanning and readability in the terminal.
+
 ## Command Line Options
 
 ### Authentication
@@ -187,6 +302,7 @@ gmailtail --query "has:attachment filename:ics" --include-attachments --format j
 
 ### Monitoring
 - `--tail, -f` - Continuous monitoring (like `tail -f`)
+- `--repl` - Start interactive REPL mode
 - `--once` - Run once and exit
 - `--poll-interval N` - Polling interval in seconds (default: 30)
 - `--batch-size N` - Messages per batch (default: 10)
@@ -245,6 +361,8 @@ gmailtail --query "has:attachment filename:ics" --include-attachments --format j
 - **Integration** - Feed email data into other tools and systems
 - **Backup** - Archive important emails in structured format
 - **CI/CD** - Monitor build notifications and alerts
+- **Interactive exploration** - Use REPL mode for ad-hoc email searches and account exploration
+- **Filter debugging** - Test and refine Gmail search queries interactively
 
 ## Configuration File
 

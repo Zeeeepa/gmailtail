@@ -73,6 +73,7 @@ from .gmailtail import GmailTail
 @click.option('--log-file', type=click.Path(), help='Log file path')
 @click.option('--config-file', type=click.Path(exists=True), help='Configuration file path')
 @click.option('--dry-run', is_flag=True, help='Simulate run without actual processing')
+@click.option('--repl', '-i', is_flag=True, help='Enter interactive REPL mode')
 
 def main(**kwargs):
     """
@@ -96,9 +97,15 @@ def main(**kwargs):
         # Load configuration
         config = Config.from_cli_args(**kwargs)
         
-        # Initialize and run gmailtail
-        gmailtail = GmailTail(config)
-        gmailtail.run()
+        # Check if REPL mode is requested
+        if kwargs.get('repl', False):
+            from .repl import GmailTailREPL
+            repl = GmailTailREPL(config)
+            repl.run()
+        else:
+            # Initialize and run gmailtail
+            gmailtail = GmailTail(config)
+            gmailtail.run()
         
     except KeyboardInterrupt:
         if not config.quiet:

@@ -53,11 +53,31 @@ class OutputFormatter:
         from_addr = message.get('from', {})
         from_email = from_addr.get('email', 'unknown') if isinstance(from_addr, dict) else str(from_addr)
         
-        # Truncate subject if too long
-        if len(subject) > 50:
-            subject = subject[:47] + "..."
+        # Extract name if available
+        from_name = from_addr.get('name', '') if isinstance(from_addr, dict) else ''
         
-        return f"{timestamp} | {from_email} | {subject}"
+        # Use name if available, otherwise email
+        sender_display = from_name if from_name else from_email
+        
+        # Truncate subject if too long
+        if len(subject) > 60:
+            subject = subject[:57] + "..."
+        
+        # Truncate sender if too long
+        if len(sender_display) > 30:
+            sender_display = sender_display[:27] + "..."
+        
+        # Format timestamp to be more readable
+        formatted_timestamp = timestamp
+        if timestamp != 'unknown':
+            try:
+                # If timestamp is in ISO format, make it shorter
+                if 'T' in timestamp:
+                    formatted_timestamp = timestamp.split('T')[0] + ' ' + timestamp.split('T')[1][:8]
+            except:
+                pass
+        
+        return f"[{formatted_timestamp}] {sender_display:<30} | {subject}"
     
     def output_message(self, message: Dict[str, Any]):
         """Output a formatted message to stdout"""
