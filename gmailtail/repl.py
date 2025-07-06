@@ -17,7 +17,6 @@ class GmailTailREPL(cmd.Cmd):
     """Interactive REPL for gmailtail"""
     
     intro = "Welcome to gmailtail REPL mode. Type 'help' for commands."
-    prompt = "gmailtail> "
     
     def __init__(self, config: Config):
         super().__init__()
@@ -25,9 +24,13 @@ class GmailTailREPL(cmd.Cmd):
         self.client = GmailClient(config)
         self.formatter = OutputFormatter(config)
         self.checkpoint = None
+        self.current_label = "INBOX"
         
         # Override output format for REPL to be human-readable
         self.config.output.format = 'compact'
+        
+        # Set initial prompt
+        self.prompt = f"gmailtail({self.current_label})> "
         
     def run(self):
         """Start the REPL"""
@@ -79,7 +82,7 @@ class GmailTailREPL(cmd.Cmd):
                     message = self.client.get_message(message_info['id'])
                     if message:
                         parsed_message = self.client.parse_message(message)
-                        print(f"{i:2d}. ", end="")
+                        print(f"{i:2d}. [{message_info['id']}] ", end="")
                         self.formatter.output_message(parsed_message)
                 print()
             else:
@@ -97,7 +100,7 @@ class GmailTailREPL(cmd.Cmd):
         parts = shlex.split(args) if args else []
         
         # Parse arguments
-        label = "INBOX"
+        label = self.current_label
         num_emails = 10
         
         if len(parts) >= 1:
@@ -129,7 +132,7 @@ class GmailTailREPL(cmd.Cmd):
                     message = self.client.get_message(message_info['id'])
                     if message:
                         parsed_message = self.client.parse_message(message)
-                        print(f"{i:2d}. ", end="")
+                        print(f"{i:2d}. [{message_info['id']}] ", end="")
                         self.formatter.output_message(parsed_message)
                 print()
             else:
@@ -137,6 +140,66 @@ class GmailTailREPL(cmd.Cmd):
                     
         except Exception as e:
             print(f"Error tailing {label}: {e}")
+    
+    def do_ls(self, args: str):
+        """List emails from current or specified label (alias for tail with unread support)
+        Usage: ls [num_of_emails] [unread]
+        Usage: ls [mailbox/label] [num_of_emails] [unread]
+        Example: ls
+        Example: ls 10
+        Example: ls unread
+        Example: ls 10 unread
+        Example: ls INBOX 10
+        Example: ls important unread
+        """
+        parts = shlex.split(args) if args else []
+        
+        # Check if 'unread' is in the arguments
+        unread_mode = 'unread' in parts
+        if unread_mode:
+            parts.remove('unread')
+        
+        # Parse remaining arguments
+        label = self.current_label
+        num_emails = 10
+        
+        if len(parts) == 1:
+            # Could be either label or number
+            try:
+                num_emails = int(parts[0])
+            except ValueError:
+                # It's a label name
+                label = parts[0]
+        elif len(parts) == 2:
+            # First is label, second is number
+            label = parts[0]
+            try:
+                num_emails = int(parts[1])
+            except ValueError:
+                print("Error: Number of emails must be an integer")
+                return
+        
+        # Construct arguments for the appropriate command
+        if unread_mode:
+            if label == self.current_label and num_emails == 10:
+                # Default case - just call unread with no args
+                return self.do_unread('')
+            else:
+                # Pass label and/or number to unread
+                unread_args = []
+                if label != self.current_label:
+                    unread_args.append(label)
+                if num_emails != 10:
+                    unread_args.append(str(num_emails))
+                return self.do_unread(' '.join(unread_args))
+        else:
+            # Regular tail mode
+            tail_args = []
+            if label != self.current_label:
+                tail_args.append(label)
+            if num_emails != 10:
+                tail_args.append(str(num_emails))
+            return self.do_tail(' '.join(tail_args))
     
     def do_unread(self, args: str):
         """Show unread emails from a label
@@ -148,11 +211,16 @@ class GmailTailREPL(cmd.Cmd):
         parts = shlex.split(args) if args else []
         
         # Parse arguments
-        label = "INBOX"
+        label = self.current_label
         limit = self.config.monitoring.batch_size
         
         if len(parts) >= 1:
-            label = parts[0]
+            # If first argument is a number, treat it as limit for current label
+            try:
+                limit = int(parts[0])
+            except ValueError:
+                # If not a number, treat as label name
+                label = parts[0]
         if len(parts) >= 2:
             try:
                 limit = int(parts[1])
@@ -180,7 +248,7 @@ class GmailTailREPL(cmd.Cmd):
                     message = self.client.get_message(message_info['id'])
                     if message:
                         parsed_message = self.client.parse_message(message)
-                        print(f"{i:2d}. ", end="")
+                        print(f"{i:2d}. [{message_info['id']}] ", end="")
                         self.formatter.output_message(parsed_message)
                 print()
             else:
@@ -222,11 +290,145 @@ class GmailTailREPL(cmd.Cmd):
         except Exception as e:
             print(f"Error getting profile: {e}")
     
+    def do_read(self, args: str):
+        """Read a specific email by ID
+        Usage: read <message-id> [without-body]
+        Example: read 18c5b2a4f2e1d8f0
+        Example: read 18c5b2a4f2e1d8f0 without-body
+        """
+        if not args.strip():
+            print("Error: Message ID is required")
+            return
+        
+        parts = shlex.split(args)
+        message_id = parts[0]
+        without_body = len(parts) > 1 and parts[1] == "without-body"
+        
+        try:
+            # Get the message
+            message = self.client.get_message(message_id)
+            if not message:
+                print(f"Message with ID '{message_id}' not found")
+                return
+            
+            # Always enable body and attachments for detailed view in REPL
+            original_include_body = self.config.output.include_body
+            original_include_attachments = self.config.output.include_attachments
+            original_max_body_length = self.config.output.max_body_length
+            self.config.output.include_body = True
+            self.config.output.include_attachments = True
+            # Set very high limit to avoid truncation in read command
+            self.config.output.max_body_length = 10000000  # 10MB limit
+            
+            # Parse the message
+            parsed_message = self.client.parse_message(message)
+            
+            # Restore original settings
+            self.config.output.include_body = original_include_body
+            self.config.output.include_attachments = original_include_attachments
+            self.config.output.max_body_length = original_max_body_length
+            
+            # Display the full message with more details
+            print(f"\n=== Email Details ===")
+            print(f"ID: {parsed_message.get('id', 'N/A')}")
+            print(f"Subject: {parsed_message.get('subject', 'No subject')}")
+            print(f"From: {self._format_email_address(parsed_message.get('from', {}))}")
+            
+            # Display recipients
+            to_addresses = parsed_message.get('to', [])
+            if to_addresses:
+                print(f"To: {', '.join([self._format_email_address(addr) for addr in to_addresses])}")
+            
+            cc_addresses = parsed_message.get('cc', [])
+            if cc_addresses:
+                print(f"CC: {', '.join([self._format_email_address(addr) for addr in cc_addresses])}")
+            
+            print(f"Date: {parsed_message.get('date', 'N/A')}")
+            print(f"Labels: {', '.join(parsed_message.get('labels', []))}")
+            
+            # Display attachments if any
+            attachments = parsed_message.get('attachments', [])
+            if attachments:
+                print(f"Attachments: {len(attachments)} file(s)")
+                for attachment in attachments:
+                    filename = attachment.get('filename', 'Unknown')
+                    size = attachment.get('size', 0)
+                    print(f"  - {filename} ({size} bytes)")
+            
+            # Display snippet
+            snippet = parsed_message.get('snippet', '')
+            if snippet:
+                print(f"\nSnippet: {snippet}")
+            
+            # Display body if available and not in without-body mode
+            if not without_body:
+                body = parsed_message.get('body', '')
+                if body:
+                    # Check if body contains HTML and convert to readable text
+                    readable_body = self._convert_html_to_text(body)
+                    print(f"\n=== Body ===")
+                    print(readable_body)
+                elif not snippet:
+                    print("\nNo body content available")
+                
+        except Exception as e:
+            print(f"Error reading message {message_id}: {e}")
+    
+    def _convert_html_to_text(self, body: str) -> str:
+        """Convert HTML body to human-readable text for REPL display"""
+        # Check if the body contains HTML tags
+        if '<' in body and '>' in body:
+            try:
+                import html2text
+                h = html2text.HTML2Text()
+                h.ignore_links = False
+                h.ignore_images = False
+                h.ignore_emphasis = False
+                h.body_width = 80  # Set reasonable width for terminal
+                h.unicode_snob = True
+                h.skip_internal_links = True
+                return h.handle(body)
+            except ImportError:
+                # Fallback to basic HTML stripping if html2text is not available
+                import html
+                import re
+                return html.unescape(re.sub(r'<[^>]+>', '', body))
+        else:
+            # Plain text, return as-is
+            return body
+    
+    def _format_email_address(self, addr):
+        """Format email address for display"""
+        if isinstance(addr, dict):
+            name = addr.get('name', '')
+            email = addr.get('email', '')
+            if name:
+                return f"{name} <{email}>"
+            else:
+                return email
+        return str(addr)
+    
+    def do_use(self, args: str):
+        """Switch current label
+        Usage: use <label>
+        Example: use INBOX
+        Example: use important
+        """
+        if not args.strip():
+            print("Error: Label name is required")
+            return
+        
+        label = args.strip()
+        self.current_label = label
+        self.prompt = f"gmailtail({self.current_label})> "
+        print(f"Switched to label: {label}")
+    
     def do_config(self, args: str):
         """Show current configuration
         Usage: config
         """
         print("Current configuration:")
+        print(f"  Current label: {self.current_label}")
         print(f"  Batch size: {self.config.monitoring.batch_size}")
         print(f"  Poll interval: {self.config.monitoring.poll_interval}")
         print(f"  Output format: {self.config.output.format}")
