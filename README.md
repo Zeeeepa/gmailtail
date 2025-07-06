@@ -2,16 +2,18 @@
 
 A command-line tool to monitor Gmail messages and output them as JSON, designed for automation, monitoring, and integration with other tools.
 
+Why: [My Blog](https://me.0xffff.me/gmailtail.html)
+
 ## Features
 
-- 🔄 **Real-time monitoring** - Continuous monitoring of new emails with `--tail` mode
-- 📧 **Flexible filtering** - Filter by sender, subject, labels, attachments, and more
-- 💾 **Checkpoint support** - Resume monitoring from where you left off
-- 🎯 **Multiple output formats** - JSON, JSON Lines, and compact formats
-- ⚙️ **Configuration files** - YAML configuration for complex setups
-- 🔍 **Gmail search syntax** - Full support for Gmail's powerful search queries
-- 🚀 **Easy authentication** - Support for OAuth2 and service accounts
-- 💬 **Interactive REPL mode** - Interactive shell for exploring and querying emails
+-  **Real-time monitoring** - Continuous monitoring of new emails with `--tail` mode
+-  **Flexible filtering** - Filter by sender, subject, labels, attachments, and more
+-  **Checkpoint support** - Resume monitoring from where you left off
+-  **Multiple output formats** - JSON, JSON Lines, and compact formats
+-  **Configuration files** - YAML configuration for complex setups
+-  **Gmail search syntax** - Full support for Gmail's powerful search queries
+-  **Easy authentication** - Support for OAuth2 and service accounts
+-  **Interactive REPL mode** - Interactive shell for exploring and querying emails
 
 ## Quick Start
 
