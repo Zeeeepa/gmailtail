@@ -5,7 +5,7 @@ Main gmailtail application
 import time
 import signal
 import sys
-from typing import Optional
+from typing import Optional, List, Dict, Any
 
 from .config import Config
 from .gmail_client import GmailClient
@@ -74,13 +74,18 @@ class GmailTail:
         self.formatter.output_verbose("Running in single-shot mode")
         
         try:
-            # Get messages
-            result = self.client.list_messages(
-                query=query,
-                max_results=self.config.monitoring.batch_size
-            )
+            # When --query is specified, fetch all results unless --max-messages is set
+            if self.config.filters.query and not self.config.monitoring.max_messages:
+                self.formatter.output_verbose("Fetching all messages matching query")
+                messages = self._fetch_all_messages(query)
+            else:
+                # Use batch size for normal operation
+                result = self.client.list_messages(
+                    query=query,
+                    max_results=self.config.monitoring.batch_size
+                )
+                messages = result.get('messages', [])
             
-            messages = result.get('messages', [])
             self.formatter.output_verbose(f"Found {len(messages)} messages")
             
             # Process messages
@@ -198,6 +203,30 @@ class GmailTail:
         except Exception as e:
             self.formatter.output_error(f"Error in follow mode: {e}")
             raise
+    
+    def _fetch_all_messages(self, query: str):
+        """Fetch all messages matching the query using pagination"""
+        all_messages = []
+        page_token = None
+        
+        while True:
+            result = self.client.list_messages(
+                query=query,
+                page_token=page_token,
+                max_results=500  # Use larger batch size for efficiency
+            )
+            
+            messages = result.get('messages', [])
+            all_messages.extend(messages)
+            
+            # Check if there are more pages
+            page_token = result.get('nextPageToken')
+            if not page_token:
+                break
+            
+            self.formatter.output_verbose(f"Fetched {len(all_messages)} messages so far...")
+        
+        return all_messages
     
     def _process_message(self, message_id: str) -> bool:
         """Process a single message"""
