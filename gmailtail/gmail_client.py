@@ -130,6 +130,17 @@ class GmailClient:
                 if self.config.verbose:
                     print(f"Retrieved message {message_id} from cache")
                 # Re-apply current config filters to cached message
+                # Ensure cached message has body if include_body is requested
+                if self.config.output.include_body and 'body' not in cached_message:
+                    # If body is not in cached message, we need to fetch it from API
+                    if self.config.verbose:
+                        print(f"Body not found in cache for message {message_id}, fetching from API")
+                    message = self.get_message(message_id)
+                    if message:
+                        parsed_message = self.parse_message(message)
+                        # Update cache with complete message
+                        self.cache.cache_message(parsed_message)
+                        return parsed_message
                 return self._apply_output_filters(cached_message)
         
         # Get from API
