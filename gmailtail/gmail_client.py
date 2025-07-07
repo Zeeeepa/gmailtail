@@ -10,6 +10,7 @@ from dateutil.parser import parse as parse_date
 
 from .config import Config
 from .auth import GmailAuth
+from .cache import MessageCache
 
 
 class GmailClient:
@@ -19,10 +20,18 @@ class GmailClient:
         self.config = config
         self.auth = GmailAuth(config)
         self.service = None
+        self.cache = MessageCache(config.cache.cache_file) if config.cache.enabled else None
     
     def connect(self):
         """Connect to Gmail API"""
         self.service = self.auth.authenticate()
+        
+        # Initialize cache if enabled
+        if self.cache and self.config.cache.clear_cache:
+            self.cache.clear_cache()
+            if not self.config.quiet:
+                print("Cache cleared")
+        
         return self.service
     
     def build_query(self) -> str:
@@ -111,6 +120,32 @@ class GmailClient:
             if not self.config.quiet:
                 print(f"Error getting message {message_id}: {e}")
             return None
+    
+    def get_parsed_message(self, message_id: str) -> Optional[Dict[str, Any]]:
+        """Get a parsed message by ID, using cache if available"""
+        # Check cache first
+        if self.cache:
+            cached_message = self.cache.get_message(message_id)
+            if cached_message:
+                if self.config.verbose:
+                    print(f"Retrieved message {message_id} from cache")
+                # Re-apply current config filters to cached message
+                return self._apply_output_filters(cached_message)
+        
+        # Get from API
+        message = self.get_message(message_id)
+        if message:
+            parsed_message = self.parse_message(message)
+            
+            # Cache the parsed message if caching is enabled
+            if self.cache:
+                self.cache.cache_message(parsed_message)
+                if self.config.verbose:
+                    print(f"Cached message {message_id}")
+            
+            return parsed_message
+        
+        return None
     
     def get_history(self, start_history_id: str, max_results: int = None) -> Dict[str, Any]:
         """Get history of changes since a specific history ID"""
@@ -276,8 +311,8 @@ class GmailClient:
             # Single part message
             body = extract_text_from_part(payload)
         
-        # Truncate if too long
-        if len(body) > self.config.output.max_body_length:
+        # Truncate if too long and max_body_length is explicitly set
+        if self.config.output.max_body_length and len(body) > self.config.output.max_body_length:
             body = body[:self.config.output.max_body_length] + "..."
         
         return body.strip()
@@ -329,6 +364,45 @@ class GmailClient:
         
         return [label_mapping.get(label_id, label_id) for label_id in label_ids]
     
+    def _apply_output_filters(self, message: Dict[str, Any]) -> Dict[str, Any]:
+        """Apply current output configuration filters to a message"""
+        filtered_message = {}
+        
+        # Always include basic fields
+        basic_fields = ['id', 'threadId', 'labelIds', 'snippet', 'historyId', 'internalDate', 
+                       'sizeEstimate', 'timestamp', 'subject', 'from', 'to', 'cc', 'bcc', 
+                       'date', 'message-id', 'labels']
+        
+        for field in basic_fields:
+            if field in message:
+                filtered_message[field] = message[field]
+        
+        # Apply field filtering if specified
+        if self.config.output.fields:
+            allowed_fields = set(self.config.output.fields)
+            # Always include id and basic fields
+            allowed_fields.update(['id', 'threadId', 'timestamp'])
+            filtered_message = {k: v for k, v in filtered_message.items() if k in allowed_fields}
+        
+        # Include body only if requested
+        if self.config.output.include_body and 'body' in message:
+            body = message['body']
+            # Apply max_body_length if specified
+            if self.config.output.max_body_length and len(body) > self.config.output.max_body_length:
+                body = body[:self.config.output.max_body_length] + "..."
+            filtered_message['body'] = body
+        
+        # Include headers only if requested
+        if self.config.output.include_body or 'headers' in (self.config.output.fields or []):
+            if 'headers' in message:
+                filtered_message['headers'] = message['headers']
+        
+        # Include attachments only if requested
+        if self.config.output.include_attachments and 'attachments' in message:
+            filtered_message['attachments'] = message['attachments']
+        
+        return filtered_message
+    
     def watch_messages(self, query: str = "") -> Generator[Dict[str, Any], None, None]:
         """Watch for new messages matching the query"""
         if not self.service:
@@ -348,10 +422,10 @@ class GmailClient:
                             message_id = message_added['message']['id']
                             
                             if message_id not in processed_messages:
-                                message = self.get_message(message_id)
-                                if message and self._message_matches_query(message, query):
+                                message = self.get_parsed_message(message_id)
+                                if message and self._message_matches_query_parsed(message, query):
                                     processed_messages.add(message_id)
-                                    yield self.parse_message(message)
+                                    yield message
                     
                     if 'historyId' in history:
                         last_history_id = history['historyId']
@@ -363,10 +437,10 @@ class GmailClient:
                         message_id = message_info['id']
                         
                         if message_id not in processed_messages:
-                            message = self.get_message(message_id)
+                            message = self.get_parsed_message(message_id)
                             if message:
                                 processed_messages.add(message_id)
-                                yield self.parse_message(message)
+                                yield message
                     
                     # Get profile to establish initial history ID
                     profile = self.get_profile()
@@ -388,6 +462,16 @@ class GmailClient:
     
     def _message_matches_query(self, message: Dict[str, Any], query: str) -> bool:
         """Check if a message matches the given query (simplified check)"""
+        # This is a simplified implementation
+        # In practice, you'd want to implement proper Gmail query parsing
+        if not query:
+            return True
+        
+        # For now, just return True and let Gmail API handle the filtering
+        return True
+    
+    def _message_matches_query_parsed(self, message: Dict[str, Any], query: str) -> bool:
+        """Check if a parsed message matches the given query (simplified check)"""
         # This is a simplified implementation
         # In practice, you'd want to implement proper Gmail query parsing
         if not query:

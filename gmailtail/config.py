@@ -47,8 +47,18 @@ class OutputConfig:
     fields: Optional[List[str]] = None
     include_body: bool = False
     include_attachments: bool = False
-    max_body_length: int = 1000
+    max_body_length: Optional[int] = None
     pretty: bool = False
+
+
+@dataclass
+class CacheConfig:
+    """Cache configuration"""
+    enabled: bool = True
+    cache_file: str = field(default_factory=lambda: os.path.expanduser('~/.gmailtail/cache.db'))
+    max_age_days: int = 30
+    cleanup_interval: int = 86400  # 24 hours in seconds
+    clear_cache: bool = False
 
 
 @dataclass
@@ -69,6 +79,7 @@ class Config:
     checkpoint: CheckpointConfig = field(default_factory=CheckpointConfig)
     output: OutputConfig = field(default_factory=OutputConfig)
     monitoring: MonitoringConfig = field(default_factory=MonitoringConfig)
+    cache: CacheConfig = field(default_factory=CacheConfig)
     
     verbose: bool = False
     quiet: bool = False
@@ -114,7 +125,7 @@ class Config:
                 fields=output_data.get('fields'),
                 include_body=output_data.get('include_body', False),
                 include_attachments=output_data.get('include_attachments', False),
-                max_body_length=output_data.get('max_body_length', 1000),
+                max_body_length=output_data.get('max_body_length'),
                 pretty=output_data.get('pretty', False)
             )
         
@@ -137,6 +148,17 @@ class Config:
                 checkpoint_interval=checkpoint_data.get('checkpoint_interval', 60),
                 resume=checkpoint_data.get('resume', False),
                 reset_checkpoint=checkpoint_data.get('reset_checkpoint', False)
+            )
+        
+        # Load cache config
+        if 'cache' in data:
+            cache_data = data['cache']
+            config.cache = CacheConfig(
+                enabled=cache_data.get('enabled', False),
+                cache_file=cache_data.get('cache_file', config.cache.cache_file),
+                max_age_days=cache_data.get('max_age_days', 30),
+                cleanup_interval=cache_data.get('cleanup_interval', 86400),
+                clear_cache=cache_data.get('clear_cache', False)
             )
         
         # Load other options
@@ -218,6 +240,16 @@ class Config:
         if kwargs.get('max_messages'):
             config.monitoring.max_messages = kwargs['max_messages']
         
+        # Cache options
+        if kwargs.get('no_cache'):
+            config.cache.enabled = False
+        if kwargs.get('cache_file'):
+            config.cache.cache_file = kwargs['cache_file']
+        if kwargs.get('cache_max_age_days'):
+            config.cache.max_age_days = kwargs['cache_max_age_days']
+        if kwargs.get('clear_cache'):
+            config.cache.clear_cache = kwargs['clear_cache']
+        
         # Other options
         if kwargs.get('verbose'):
             config.verbose = kwargs['verbose']
@@ -236,6 +268,9 @@ class Config:
             os.path.dirname(self.auth.cached_auth_token),
             os.path.dirname(self.checkpoint.checkpoint_file)
         ]
+        
+        if self.cache.enabled:
+            directories.append(os.path.dirname(self.cache.cache_file))
         
         if self.log_file:
             directories.append(os.path.dirname(self.log_file))

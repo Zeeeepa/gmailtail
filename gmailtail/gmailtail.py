@@ -207,14 +207,11 @@ class GmailTail:
                 self.formatter.output_verbose(f"Skipping already processed message: {message_id}")
                 return False
             
-            # Fetch full message
-            message = self.client.get_message(message_id)
-            if not message:
+            # Fetch and parse message
+            parsed_message = self.client.get_parsed_message(message_id)
+            if not parsed_message:
                 self.formatter.output_verbose(f"Could not fetch message: {message_id}")
                 return False
-            
-            # Parse message
-            parsed_message = self.client.parse_message(message)
             
             # Filter by subject pattern if specified
             if self.config.filters.subject and parsed_message.get('subject'):

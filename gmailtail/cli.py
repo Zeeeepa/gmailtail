@@ -54,7 +54,7 @@ from .gmailtail import GmailTail
 @click.option('--fields', help='Output fields list (comma-separated)')
 @click.option('--include-body', is_flag=True, help='Include email body')
 @click.option('--include-attachments', is_flag=True, help='Include attachment information')
-@click.option('--max-body-length', type=int, default=1000,
+@click.option('--max-body-length', type=int,
               help='Maximum email body length in characters')
 @click.option('--pretty', is_flag=True, help='Pretty-print JSON output')
 
@@ -66,6 +66,12 @@ from .gmailtail import GmailTail
 @click.option('--tail', '-t', is_flag=True, help='Continuous monitoring mode (like tail -f)')
 @click.option('--once', is_flag=True, help='Run once, do not continue monitoring')
 @click.option('--max-messages', type=int, help='Maximum number of messages to process')
+
+# Cache options
+@click.option('--no-cache', is_flag=True, help='Disable caching entirely')
+@click.option('--cache-file', type=click.Path(), help='Cache database file path')
+@click.option('--cache-max-age-days', type=int, default=30, help='Maximum cache age in days')
+@click.option('--clear-cache', is_flag=True, help='Clear cache before running')
 
 # Other options
 @click.option('--verbose', '-v', is_flag=True, help='Verbose output mode')

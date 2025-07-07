@@ -79,9 +79,8 @@ class GmailTailREPL(cmd.Cmd):
                 
                 # Process and display messages
                 for i, message_info in enumerate(messages, 1):
-                    message = self.client.get_message(message_info['id'])
-                    if message:
-                        parsed_message = self.client.parse_message(message)
+                    parsed_message = self.client.get_parsed_message(message_info['id'])
+                    if parsed_message:
                         print(f"{i:2d}. [{message_info['id']}] ", end="")
                         self.formatter.output_message(parsed_message)
                 print()
@@ -129,9 +128,8 @@ class GmailTailREPL(cmd.Cmd):
                 
                 # Process and display messages
                 for i, message_info in enumerate(messages, 1):
-                    message = self.client.get_message(message_info['id'])
-                    if message:
-                        parsed_message = self.client.parse_message(message)
+                    parsed_message = self.client.get_parsed_message(message_info['id'])
+                    if parsed_message:
                         print(f"{i:2d}. [{message_info['id']}] ", end="")
                         self.formatter.output_message(parsed_message)
                 print()
@@ -245,9 +243,8 @@ class GmailTailREPL(cmd.Cmd):
                 
                 # Process and display messages
                 for i, message_info in enumerate(messages, 1):
-                    message = self.client.get_message(message_info['id'])
-                    if message:
-                        parsed_message = self.client.parse_message(message)
+                    parsed_message = self.client.get_parsed_message(message_info['id'])
+                    if parsed_message:
                         print(f"{i:2d}. [{message_info['id']}] ", end="")
                         self.formatter.output_message(parsed_message)
                 print()
@@ -305,12 +302,6 @@ class GmailTailREPL(cmd.Cmd):
         without_body = len(parts) > 1 and parts[1] == "without-body"
         
         try:
-            # Get the message
-            message = self.client.get_message(message_id)
-            if not message:
-                print(f"Message with ID '{message_id}' not found")
-                return
-            
             # Always enable body and attachments for detailed view in REPL
             original_include_body = self.config.output.include_body
             original_include_attachments = self.config.output.include_attachments
@@ -320,13 +311,17 @@ class GmailTailREPL(cmd.Cmd):
             # Set very high limit to avoid truncation in read command
             self.config.output.max_body_length = 10000000  # 10MB limit
             
-            # Parse the message
-            parsed_message = self.client.parse_message(message)
+            # Get the parsed message
+            parsed_message = self.client.get_parsed_message(message_id)
             
             # Restore original settings
             self.config.output.include_body = original_include_body
             self.config.output.include_attachments = original_include_attachments
             self.config.output.max_body_length = original_max_body_length
+            
+            if not parsed_message:
+                print(f"Message with ID '{message_id}' not found")
+                return
             
             # Display the full message with more details
             print(f"\n=== Email Details ===")
