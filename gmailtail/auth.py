@@ -25,6 +25,26 @@ class GmailAuth:
         self.config = config
         self.service = None
     
+    def _is_headless_environment(self) -> bool:
+        """Detect if running in a headless environment"""
+        # Check for SSH connection
+        if os.environ.get('SSH_CLIENT') or os.environ.get('SSH_TTY'):
+            return True
+        
+        # Check for DISPLAY variable on Unix systems
+        if os.name == 'posix' and not os.environ.get('DISPLAY'):
+            return True
+        
+        # Check for common headless indicators
+        if os.environ.get('CI') or os.environ.get('GITHUB_ACTIONS'):
+            return True
+        
+        # Check if we're in a Docker container
+        if os.path.exists('/.dockerenv'):
+            return True
+        
+        return False
+    
     def authenticate(self):
         """Authenticate and build Gmail service"""
         creds = None
@@ -97,9 +117,14 @@ class GmailAuth:
             credentials_file, self.SCOPES
         )
         
-        # For headless environments, you might want to use flow.run_local_server()
-        # with specific parameters or flow.run_console() for console-based auth
-        creds = flow.run_local_server(port=0)
+        # Auto-detect headless environment and use appropriate auth method
+        if self._is_headless_environment():
+            if not self.config.quiet:
+                print("Headless environment detected - using console-based authentication")
+            creds = flow.run_console()
+        else:
+            # Use local server for environments with browser access
+            creds = flow.run_local_server(port=0)
         
         return creds
     
