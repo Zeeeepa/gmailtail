@@ -4,6 +4,7 @@ Gmail API authentication module
 
 import os
 import pickle
+import platform
 from pathlib import Path
 from typing import Optional
 
@@ -31,8 +32,8 @@ class GmailAuth:
         if os.environ.get('SSH_CLIENT') or os.environ.get('SSH_TTY'):
             return True
         
-        # Check for DISPLAY variable on Unix systems
-        if os.name == 'posix' and not os.environ.get('DISPLAY'):
+        # Check for DISPLAY variable on Linux systems (not macOS)
+        if os.name == 'posix' and platform.system() == 'Linux' and not os.environ.get('DISPLAY'):
             return True
         
         # Check for common headless indicators
