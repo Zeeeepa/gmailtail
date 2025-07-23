@@ -27,6 +27,10 @@ from .gmailtail import GmailTail
 @click.option('--cached-auth-token', type=click.Path(),
               default=lambda: os.path.expanduser('~/.gmailtail/tokens'),
               help='Cached authentication token file path')
+@click.option('--force-headless', is_flag=True,
+              help='Force headless authentication mode (console-based)')
+@click.option('--ignore-token', is_flag=True,
+              help='Ignore cached authentication token and force re-authentication')
 
 # Filter and query options
 @click.option('--query', help='Gmail search query syntax')

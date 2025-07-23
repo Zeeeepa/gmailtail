@@ -49,16 +49,20 @@ class GmailAuth:
     def authenticate(self):
         """Authenticate and build Gmail service"""
         creds = None
-        
-        # Try to load existing token
         token_file = self.config.auth.cached_auth_token
-        if os.path.exists(token_file):
-            with open(token_file, 'rb') as token:
-                creds = pickle.load(token)
+        
+        # Skip token loading if ignore_token flag is set
+        if not self.config.auth.ignore_token:
+            # Try to load existing token
+            if os.path.exists(token_file):
+                with open(token_file, 'rb') as token:
+                    creds = pickle.load(token)
+        elif not self.config.quiet:
+            print("Ignoring cached token due to --ignore-token flag")
         
         # If there are no (valid) credentials available, let the user log in.
         if not creds or not creds.valid:
-            if creds and creds.expired and creds.refresh_token:
+            if creds and creds.expired and creds.refresh_token and not self.config.auth.ignore_token:
                 try:
                     creds.refresh(Request())
                 except Exception as e:
@@ -118,11 +122,26 @@ class GmailAuth:
             credentials_file, self.SCOPES
         )
         
-        # Auto-detect headless environment and use appropriate auth method
-        if self._is_headless_environment():
+        # Check if headless mode is forced or auto-detected
+        use_headless = self.config.auth.force_headless or self._is_headless_environment()
+        
+        if use_headless:
             if not self.config.quiet:
-                print("Headless environment detected - using console-based authentication")
-            creds = flow.run_console()
+                if self.config.auth.force_headless:
+                    print("Forced headless mode - using console-based authentication")
+                else:
+                    print("Headless environment detected - using console-based authentication")
+            # For headless environments, we need to run the flow differently
+            # Since run_console() doesn't exist, we'll use run_local_server with manual auth
+            try:
+                creds = flow.run_local_server(port=0, open_browser=False)
+            except Exception:
+                # If local server fails, provide manual instructions
+                auth_url, _ = flow.authorization_url(prompt='consent')
+                print(f"Please go to this URL and authorize the application: {auth_url}")
+                auth_code = input("Enter the authorization code: ")
+                flow.fetch_token(code=auth_code)
+                creds = flow.credentials
         else:
             # Use local server for environments with browser access
             creds = flow.run_local_server(port=0)

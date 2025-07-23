@@ -16,6 +16,8 @@ class AuthConfig:
     credentials: Optional[str] = None
     auth_token: Optional[str] = None
     cached_auth_token: str = field(default_factory=lambda: os.path.expanduser('~/.gmailtail/tokens'))
+    force_headless: bool = False
+    ignore_token: bool = False
 
 
 @dataclass
@@ -100,7 +102,9 @@ class Config:
             config.auth = AuthConfig(
                 credentials=auth_data.get('credentials_file'),
                 auth_token=auth_data.get('auth_token'),
-                cached_auth_token=auth_data.get('cached_auth_token', config.auth.cached_auth_token)
+                cached_auth_token=auth_data.get('cached_auth_token', config.auth.cached_auth_token),
+                force_headless=auth_data.get('force_headless', False),
+                ignore_token=auth_data.get('ignore_token', False)
             )
         
         # Load filter config
@@ -185,6 +189,10 @@ class Config:
             config.auth.auth_token = kwargs['auth_token']
         if kwargs.get('cached_auth_token'):
             config.auth.cached_auth_token = kwargs['cached_auth_token']
+        if kwargs.get('force_headless'):
+            config.auth.force_headless = kwargs['force_headless']
+        if kwargs.get('ignore_token'):
+            config.auth.ignore_token = kwargs['ignore_token']
         
         # Filter options
         if kwargs.get('query'):
