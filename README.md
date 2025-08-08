@@ -187,21 +187,71 @@ Once in REPL mode, you can use these commands:
 
 #### Basic Email Operations
 ```
+# List emails from current label (default: 10 emails)
+gmailtail> ls
+
+# List 20 emails from current label
+gmailtail> ls 20
+
+# List emails from specific label
+gmailtail> ls INBOX
+
+# List 15 emails from specific label
+gmailtail> ls work 15
+
+# List only unread emails (new improved syntax)
+gmailtail> ls --unread
+
+# List 5 unread emails from specific label
+gmailtail> ls --unread important 5
+
+# Show recent emails from INBOX (alias for ls)
+gmailtail> tail
+
+# Show 10 recent emails from a specific label
+gmailtail> tail work 10
+
 # Show unread emails from INBOX
 gmailtail> unread
 
 # Show 5 unread emails from a specific label
 gmailtail> unread important 5
 
-# Show recent emails from INBOX
-gmailtail> tail
-
-# Show 10 recent emails from a specific label
-gmailtail> tail work 10
-
 # Execute a Gmail search query
 gmailtail> query from:noreply@github.com subject:pull
 ```
+
+#### The ls Command (Enhanced Email Listing)
+
+The `ls` command is the primary way to list emails in REPL mode. It supports flexible syntax and improved unread email handling:
+
+```
+# Basic usage
+ls                        # List 10 emails from current label
+ls 20                     # List 20 emails from current label
+
+# Specify label and limit
+ls INBOX                  # List 10 emails from INBOX
+ls work 15                # List 15 emails from work label
+ls important 5            # List 5 emails from important label
+
+# Unread emails (new improved syntax)
+ls --unread               # List unread emails from current label
+ls -u                     # Short form for --unread
+ls --unread 20            # List 20 unread emails from current label
+ls --unread INBOX         # List unread emails from INBOX  
+ls --unread work 10       # List 10 unread emails from work label
+
+# Handle numeric labels (use quotes)
+ls "123"                  # List emails from label named "123"
+ls "123" 5                # List 5 emails from label "123"
+
+# Mixed arguments (intelligent parsing)
+ls 15 work                # List 15 emails from work (number first)
+ls work 15                # List 15 emails from work (label first)
+```
+
+**Note**: The `ls` command intelligently parses arguments based on their type (numeric vs text), making it more flexible than the original implementation.
 
 #### Account Information
 ```
@@ -234,28 +284,56 @@ $ gmailtail --credentials credentials.json --repl
 
 Welcome to gmailtail REPL mode. Type 'help' for commands.
 
-gmailtail> unread important 3
+gmailtail(INBOX)> ls 3
 
-=== Found 3 unread emails in important ===
+=== Showing 3 recent emails from INBOX ===
 
- 1. [2025-01-15 10:30:25] GitHub <noreply@github.com>     | New pull request assigned to you
- 2. [2025-01-15 09:45:12] JIRA <noreply@jira.com>        | Issue updated: Bug in login system
- 3. [2025-01-15 08:20:30] Slack <noreply@slack.com>      | You have 5 new mentions
+ 1. [18c5b2a4f2e1d8f0] [2025-01-15 10:30:25] GitHub <noreply@github.com>     | New pull request assigned to you
+ 2. [18c5b2a4f2e1d8f1] [2025-01-15 09:45:12] JIRA <noreply@jira.com>        | Issue updated: Bug in login system  
+ 3. [18c5b2a4f2e1d8f2] [2025-01-15 08:20:30] Slack <noreply@slack.com>      | You have 5 new mentions
 
-gmailtail> query subject:alert OR subject:error
+gmailtail(INBOX)> ls --unread important 2
+
+=== Found 2 unread emails in important ===
+
+ 1. [18c5b2a4f2e1d8f3] [2025-01-15 11:00:00] Monitor <alerts@monitor.com>   | Database connection alert
+ 2. [18c5b2a4f2e1d8f4] [2025-01-15 10:30:00] System <system@server.com>    | Server maintenance scheduled
+
+gmailtail(INBOX)> ls work 5
+
+=== Showing 5 recent emails from work ===
+
+ 1. [18c5b2a4f2e1d8f5] [2025-01-15 12:00:00] Boss <boss@company.com>        | Team meeting at 2 PM
+ 2. [18c5b2a4f2e1d8f6] [2025-01-15 11:30:00] HR <hr@company.com>           | New policy update
+ 3. [18c5b2a4f2e1d8f7] [2025-01-15 11:15:00] Dev Team <dev@company.com>    | Code review required
+ 4. [18c5b2a4f2e1d8f8] [2025-01-15 10:45:00] PM <pm@company.com>           | Sprint planning notes
+ 5. [18c5b2a4f2e1d8f9] [2025-01-15 10:00:00] IT <it@company.com>           | System maintenance window
+
+gmailtail(INBOX)> query subject:alert OR subject:error
 
 === Found 2 messages ===
 
- 1. [2025-01-15 11:15:00] Monitor <alerts@monitor.com>    | Database connection alert
- 2. [2025-01-15 10:00:00] System <system@server.com>     | Error in backup process
+ 1. [18c5b2a4f2e1d8fa] [2025-01-15 11:15:00] Monitor <alerts@monitor.com>   | Database connection alert
+ 2. [18c5b2a4f2e1d8fb] [2025-01-15 10:00:00] System <system@server.com>    | Error in backup process
 
-gmailtail> profile
+gmailtail(INBOX)> use work
+Switched to label: work
+
+gmailtail(work)> ls
+
+=== Showing 10 recent emails from work ===
+
+ 1. [18c5b2a4f2e1d8fc] [2025-01-15 12:30:00] Client <client@external.com>   | Project update request
+ 2. [18c5b2a4f2e1d8fd] [2025-01-15 12:15:00] Boss <boss@company.com>        | Budget approval needed
+ ... (8 more emails)
+
+gmailtail(work)> profile
 Email: john.doe@example.com
 Messages Total: 15247
 Threads Total: 8932
 History ID: 1234567890
 
-gmailtail> labels
+gmailtail(work)> labels
 Available labels:
   INBOX (INBOX)
   SENT (SENT)
@@ -264,7 +342,7 @@ Available labels:
   work (Label_2)
   personal (Label_3)
   
-gmailtail> exit
+gmailtail(work)> exit
 Goodbye!
 ```
 

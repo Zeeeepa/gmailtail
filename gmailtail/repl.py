@@ -140,63 +140,98 @@ class GmailTailREPL(cmd.Cmd):
             print(f"Error tailing {label}: {e}")
     
     def do_ls(self, args: str):
-        """List emails from current or specified label (alias for tail with unread support)
-        Usage: ls [num_of_emails] [unread]
-        Usage: ls [mailbox/label] [num_of_emails] [unread]
-        Example: ls
-        Example: ls 10
-        Example: ls unread
-        Example: ls 10 unread
-        Example: ls INBOX 10
-        Example: ls important unread
+        """List emails from current or specified label
+        
+        Usage: 
+            ls [--unread|-u] [LABEL] [LIMIT]
+            
+        Arguments:
+            LABEL   Label/mailbox name (default: current label)
+            LIMIT   Number of emails to show (default: 10)
+            
+        Options:
+            --unread, -u    Show only unread emails
+            
+        Examples:
+            ls                    # Show 10 emails from current label
+            ls 20                 # Show 20 emails from current label  
+            ls INBOX              # Show 10 emails from INBOX
+            ls INBOX 20           # Show 20 emails from INBOX
+            ls --unread           # Show unread emails from current label
+            ls --unread INBOX 20  # Show 20 unread emails from INBOX
+            
+        Note: For numeric label names, use quotes: ls "123"
         """
         parts = shlex.split(args) if args else []
         
-        # Check if 'unread' is in the arguments
-        unread_mode = 'unread' in parts
-        if unread_mode:
-            parts.remove('unread')
+        # Parse options first
+        unread_mode = False
+        filtered_parts = []
         
-        # Parse remaining arguments
-        label = self.current_label
-        num_emails = 10
-        
-        if len(parts) == 1:
-            # Could be either label or number
-            try:
-                num_emails = int(parts[0])
-            except ValueError:
-                # It's a label name
-                label = parts[0]
-        elif len(parts) == 2:
-            # First is label, second is number
-            label = parts[0]
-            try:
-                num_emails = int(parts[1])
-            except ValueError:
-                print("Error: Number of emails must be an integer")
-                return
-        
-        # Construct arguments for the appropriate command
-        if unread_mode:
-            if label == self.current_label and num_emails == 10:
-                # Default case - just call unread with no args
-                return self.do_unread('')
+        i = 0
+        while i < len(parts):
+            if parts[i] in ['--unread', '-u']:
+                unread_mode = True
+            elif parts[i] == 'unread':  # Keep backward compatibility
+                unread_mode = True
             else:
-                # Pass label and/or number to unread
-                unread_args = []
-                if label != self.current_label:
-                    unread_args.append(label)
-                if num_emails != 10:
-                    unread_args.append(str(num_emails))
-                return self.do_unread(' '.join(unread_args))
+                filtered_parts.append(parts[i])
+            i += 1
+        
+        # Parse remaining arguments: [label] [limit]
+        label = self.current_label
+        limit = 10
+        
+        # Parse arguments based on their types and positions
+        if len(filtered_parts) == 1:
+            arg = filtered_parts[0]
+            if arg.isdigit():
+                # Single numeric argument - treat as limit
+                limit = int(arg)
+            else:
+                # Single non-numeric argument - treat as label
+                label = arg
+        elif len(filtered_parts) == 2:
+            # Two arguments - determine which is label and which is limit
+            first, second = filtered_parts[0], filtered_parts[1]
+            
+            if first.isdigit() and second.isdigit():
+                # Both are numeric - this is ambiguous, treat first as limit
+                print("Warning: Both arguments are numeric. Treating first as limit, second as label.")
+                limit = int(first)
+                label = second
+            elif first.isdigit() and not second.isdigit():
+                # First is numeric, second is not - first is limit, second is label
+                limit = int(first)
+                label = second
+            elif not first.isdigit() and second.isdigit():
+                # First is not numeric, second is - first is label, second is limit
+                label = first
+                limit = int(second)
+            else:
+                # Neither is numeric - first is label, second is invalid
+                label = first
+                print(f"Warning: Ignoring non-numeric limit argument: {second}")
+        elif len(filtered_parts) > 2:
+            print("Error: Too many arguments. Usage: ls [--unread] [label] [limit]")
+            return
+        
+        # Execute the appropriate command
+        if unread_mode:
+            # Call unread command with proper arguments
+            unread_args = []
+            if label != self.current_label:
+                unread_args.append(label)
+            if limit != self.config.monitoring.batch_size:
+                unread_args.append(str(limit))
+            return self.do_unread(' '.join(unread_args))
         else:
-            # Regular tail mode
+            # Call tail command with proper arguments  
             tail_args = []
             if label != self.current_label:
                 tail_args.append(label)
-            if num_emails != 10:
-                tail_args.append(str(num_emails))
+            if limit != 10:
+                tail_args.append(str(limit))
             return self.do_tail(' '.join(tail_args))
     
     def do_unread(self, args: str):
